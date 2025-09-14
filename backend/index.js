@@ -17,6 +17,7 @@ import orderRoutes from './Routes/OrderRoutes.js';
 import categoryRoutes from './Routes/CategoryRoutes.js';
 import newsRoutes from './Routes/GlobalArtNewsRoutes.js';
 import artisanInsightsRoutes from './Routes/ArtisanInsightsRoutes.js';
+import cartRoutes from './Routes/CartRoutes.js';
 
 import buyerGoogleAuthRoutes from './Routes/BuyerGoogleAuthRoutes.js';
 import sellerGoogleAuthRoutes from './Routes/SellerGoogleAuthRoutes.js';
@@ -27,7 +28,7 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-    origin: 'http://localhost:3000', 
+    origin: 'http://localhost:3000',
     credentials: true,
 }));
 app.use(express.urlencoded({ extended: true }));
@@ -43,6 +44,27 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Passport serialization
+passport.serializeUser((user, done) => {
+    done(null, { id: user._id, role: user.googleId ? (user.businessName ? 'seller' : 'buyer') : user.role });
+});
+
+passport.deserializeUser(async (sessionUser, done) => {
+    try {
+        let user;
+        if (sessionUser.role === 'buyer') {
+            const { default: Buyer } = await import('./models/BuyerSchema.js');
+            user = await Buyer.findById(sessionUser.id);
+        } else if (sessionUser.role === 'seller') {
+            const { default: Seller } = await import('./models/SellerSchema.js');
+            user = await Seller.findById(sessionUser.id);
+        }
+        done(null, user);
+    } catch (error) {
+        done(error, null);
+    }
+});
+
 const MONGODB_URI = process.env.MONGODB_URI;
 
 mongoose.connect(MONGODB_URI)
@@ -54,8 +76,8 @@ app.use('/api/auth/buyers', buyerRoutes);
 app.use('/api/auth/sellers', sellerRoutes);
 
 // Google Authentication Routes
-app.use('/api/auth/google/buyers', buyerGoogleAuthRoutes);
-app.use('/api/auth/google/sellers', sellerGoogleAuthRoutes);
+app.use('/api/auth/google', buyerGoogleAuthRoutes);
+app.use('/api/auth/google', sellerGoogleAuthRoutes);
 
 // Product, Trends, and Marketplace Routes
 app.use('/api/products', productRoutes);
@@ -64,6 +86,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/artisan', artisanInsightsRoutes);
+app.use('/api/cart', cartRoutes);
 
 // Protected Routes Example (if needed for the future)
 app.get('/protected-route', authenticateToken, (req, res) => {

@@ -8,9 +8,14 @@ export const initializeBuyerGoogleStrategy = () => {
     passport.use('google-buyer', new GoogleStrategy({
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: 'http://localhost:5000/api/auth/buyers/google/callback'
+        callbackURL: 'http://localhost:5000/api/auth/google/callback/buyer'
     }, async (accessToken, refreshToken, profile, done) => {
         try {
+            // Validate required profile data
+            if (!profile.emails || profile.emails.length === 0) {
+                return done(new Error('No email provided by Google'), null);
+            }
+
             let buyer = await Buyer.findOne({ googleId: profile.id });
             if (!buyer) {
                 buyer = await Buyer.findOne({ email: profile.emails[0].value });
@@ -20,9 +25,9 @@ export const initializeBuyerGoogleStrategy = () => {
                 } else {
                     const newBuyer = {
                         googleId: profile.id,
-                        name: profile.displayName,
+                        name: profile.displayName || 'Unknown User',
                         email: profile.emails[0].value,
-                        profilePhotoUrl: profile.photos[0].value,
+                        profilePhotoUrl: profile.photos && profile.photos.length > 0 ? profile.photos[0].value : '',
                         refreshToken: ''
                     };
                     buyer = new Buyer(newBuyer);
