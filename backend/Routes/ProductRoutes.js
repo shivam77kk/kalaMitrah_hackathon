@@ -28,6 +28,7 @@ router.post('/', authenticateToken, isSeller, uploadImage.array('images', 5), cr
 
 router.get('/seller/my-products', authenticateToken, isSeller, getSellerProducts);
 
+// --- AI-powered Features (Seller-only) ---
 router.post('/ai/description', authenticateToken, isSeller, generateAIdescription);
 
 router.post('/ai/price-suggestion', authenticateToken, isSeller, generateAIPrice);

@@ -6,11 +6,11 @@ const router = express.Router();
 
 initializeBuyerGoogleStrategy();
 
-router.get('/google',
+router.get('/buyer',
     passport.authenticate('google-buyer', { scope: ['profile', 'email'] })
 );
 
-router.get('/google/callback',
+router.get('/callback/buyer',
     passport.authenticate('google-buyer', { failureRedirect: 'http://localhost:3000/login' }),
     googleBuyerCallbackHandler
 );

@@ -6,11 +6,11 @@ const router = express.Router();
 
 initializeSellerGoogleStrategy();
 
-router.get('/google',
+router.get('/seller',
     passport.authenticate('google-seller', { scope: ['profile', 'email'] })
 );
 
-router.get('/google/callback',
+router.get('/callback/seller',
     passport.authenticate('google-seller', { failureRedirect: 'http://localhost:3000/login' }),
     googleSellerCallbackHandler
 );
