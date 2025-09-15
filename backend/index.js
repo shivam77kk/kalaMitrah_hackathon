@@ -19,9 +19,13 @@ import newsRoutes from './Routes/GlobalArtNewsRoutes.js';
 import artisanInsightsRoutes from './Routes/ArtisanInsightsRoutes.js';
 import cartRoutes from './Routes/CartRoutes.js';
 import paymentRoutes from './Routes/PaymentRoutes.js';
+import chatbotRoutes from './Routes/ChatBotRoutes.js'; 
 
 import buyerGoogleAuthRoutes from './Routes/BuyerGoogleAuthRoutes.js';
 import sellerGoogleAuthRoutes from './Routes/SellerGoogleAuthRoutes.js';
+
+import { initializeBuyerGoogleStrategy } from './Controllers/BuyerGoogleAuthController.js';
+import { initializeSellerGoogleStrategy } from './Controllers/SellerGoogleAuthController.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -45,7 +49,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Passport serialization
+
 passport.serializeUser((user, done) => {
     done(null, { id: user._id, role: user.googleId ? (user.businessName ? 'seller' : 'buyer') : user.role });
 });
@@ -72,15 +76,15 @@ mongoose.connect(MONGODB_URI)
     .then(() => console.log('MongoDB connected successfully'))
     .catch(err => console.error('MongoDB connection error:', err));
 
-// Authentication Routes (Email/Password)
+initializeBuyerGoogleStrategy();
+initializeSellerGoogleStrategy();
+
 app.use('/api/auth/buyers', buyerRoutes);
 app.use('/api/auth/sellers', sellerRoutes);
 
-// Google Authentication Routes
-app.use('/api/auth/google', buyerGoogleAuthRoutes);
-app.use('/api/auth/google', sellerGoogleAuthRoutes);
+app.use('/api/auth/google/buyers', buyerGoogleAuthRoutes);
+app.use('/api/auth/google/sellers', sellerGoogleAuthRoutes);
 
-// Product, Trends, and Marketplace Routes
 app.use('/api/products', productRoutes);
 app.use('/api/trends', trendsRoutes);
 app.use('/api/orders', orderRoutes);
@@ -89,6 +93,7 @@ app.use('/api/news', newsRoutes);
 app.use('/api/artisan', artisanInsightsRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 app.get('/protected-route', authenticateToken, (req, res) => {
     res.status(200).json({ message: `Welcome ${req.user.role}, you have access!`, user: req.user });

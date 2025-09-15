@@ -10,8 +10,11 @@ const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SEC
 export const createCheckoutSession = async (req, res) => {
     try {
         if (!stripe) {
+            console.error("Stripe not initialized - missing STRIPE_SECRET_KEY");
             return res.status(500).json({ success: false, message: "Payment processing is not configured. Please contact administrator." });
         }
+        
+        console.log("Stripe checkout session creation started for user:", req.user.id);
         
         const buyerId = req.user.id;
         
@@ -50,6 +53,7 @@ export const createCheckoutSession = async (req, res) => {
             },
         });
 
+        console.log("Stripe checkout session created successfully:", session.id);
         res.status(200).json({ success: true, url: session.url });
     } catch (error) {
         console.error("Error creating checkout session:", error.message);
