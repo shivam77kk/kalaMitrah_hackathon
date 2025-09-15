@@ -18,6 +18,7 @@ import categoryRoutes from './Routes/CategoryRoutes.js';
 import newsRoutes from './Routes/GlobalArtNewsRoutes.js';
 import artisanInsightsRoutes from './Routes/ArtisanInsightsRoutes.js';
 import cartRoutes from './Routes/CartRoutes.js';
+import paymentRoutes from './Routes/PaymentRoutes.js';
 
 import buyerGoogleAuthRoutes from './Routes/BuyerGoogleAuthRoutes.js';
 import sellerGoogleAuthRoutes from './Routes/SellerGoogleAuthRoutes.js';
@@ -87,13 +88,12 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/artisan', artisanInsightsRoutes);
 app.use('/api/cart', cartRoutes);
+app.use('/api/payment', paymentRoutes);
 
-// Protected Routes Example (if needed for the future)
 app.get('/protected-route', authenticateToken, (req, res) => {
     res.status(200).json({ message: `Welcome ${req.user.role}, you have access!`, user: req.user });
 });
 
-// Start the server
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

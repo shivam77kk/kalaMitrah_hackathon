@@ -31,10 +31,10 @@ export const addItemToCart = async (req, res) => {
             return res.status(404).json({ success: false, message: "Product not found." });
         }
 
-        const cart = await Cart.findOne({ buyer: buyerId });
+        let cart = await Cart.findOne({ buyer: buyerId });
         if (!cart) {
-            const newCart = new Cart({ buyer: buyerId });
-            await newCart.save();
+            cart = new Cart({ buyer: buyerId, items: [] });
+            await cart.save();
         }
 
         const itemIndex = cart.items.findIndex(item => item.product.toString() === productId);

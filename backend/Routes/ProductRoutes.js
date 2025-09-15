@@ -20,13 +20,13 @@ router.get('/', getAllProducts);
 
 router.get('/trending', getTrendingProducts);
 
-router.get('/:productId', getProductById);
-
 // --- Seller-only Routes (protected) ---
+router.get('/seller/my-products', authenticateToken, isSeller, getSellerProducts);
+
 // Create a new product with image uploads
 router.post('/', authenticateToken, isSeller, uploadImage.array('images', 5), createProduct);
 
-router.get('/seller/my-products', authenticateToken, isSeller, getSellerProducts);
+router.get('/:productId', getProductById);
 
 // --- AI-powered Features (Seller-only) ---
 router.post('/ai/description', authenticateToken, isSeller, generateAIdescription);
