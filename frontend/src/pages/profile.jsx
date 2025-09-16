@@ -7,6 +7,7 @@ export default function Profile() {
   const [userName, setUserName] = useState('User')
   const [userEmail, setUserEmail] = useState('')
   const [profileImage, setProfileImage] = useState('')
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [description, setDescription] = useState('')
   const [isEditing, setIsEditing] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
@@ -19,7 +20,10 @@ export default function Profile() {
   useEffect(() => {
     const storedName = localStorage.getItem('userName')
     const storedEmail = localStorage.getItem('userEmail') || 'user@example.com'
+    const storedImage = localStorage.getItem('userProfileImage')
+    
     if (storedName) setUserName(storedName)
+    if (storedImage) setProfileImage(storedImage)
     setUserEmail(storedEmail)
     setEditData({ name: storedName || '', description: '' })
     
@@ -66,23 +70,68 @@ export default function Profile() {
     const file = e.target.files[0]
     if (!file) return
     
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file')
+      return
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size should be less than 5MB')
+      return
+    }
+    
+    setUploadingImage(true)
+    
+    // Create preview immediately
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      setProfileImage(e.target.result)
+    }
+    reader.readAsDataURL(file)
+    
     const formData = new FormData()
     formData.append('image', file)
     
     try {
       const token = localStorage.getItem('accessToken')
-      const response = await fetch('http://localhost:5000/api/buyers/profile/upload-image', {
+      
+      // Try buyer endpoint first
+      let response = await fetch('http://localhost:5000/api/buyers/profile/upload-image', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
       })
       
-      const data = await response.json()
-      if (data.success) {
-        setProfileImage(data.profilePhotoUrl)
+      // If buyer fails, try seller endpoint
+      if (!response.ok) {
+        response = await fetch('http://localhost:5000/api/sellers/profile/image', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        })
+      }
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.profilePhotoUrl) {
+          setProfileImage(data.profilePhotoUrl)
+          localStorage.setItem('userProfileImage', data.profilePhotoUrl)
+        } else {
+          // Keep the preview image if backend fails
+          localStorage.setItem('userProfileImage', profileImage)
+        }
+      } else {
+        // Keep the preview image if backend fails
+        localStorage.setItem('userProfileImage', profileImage)
       }
     } catch (error) {
       console.error('Error uploading image:', error)
+      // Keep the preview image even if upload fails
+      localStorage.setItem('userProfileImage', profileImage)
+    } finally {
+      setUploadingImage(false)
     }
   }
 
@@ -163,17 +212,41 @@ export default function Profile() {
         <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 mb-6 shadow-sm`}>
           <div className="flex items-start space-x-6">
             <div className="relative">
-              <div className="w-24 h-24 bg-[#8b4513] rounded-full flex items-center justify-center overflow-hidden">
+              <div className="w-24 h-24 bg-[#8b4513] rounded-full flex items-center justify-center overflow-hidden border-2 border-gray-200">
                 {profileImage ? (
-                  <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-white text-2xl font-bold">{userName.charAt(0).toUpperCase()}</span>
-                )}
+                  <img 
+                    src={profileImage} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = 'none'
+                      e.target.nextSibling.style.display = 'flex'
+                    }}
+                  />
+                ) : null}
+                <span 
+                  className={`text-white text-2xl font-bold ${profileImage ? 'hidden' : 'flex'} items-center justify-center w-full h-full`}
+                >
+                  {userName.charAt(0).toUpperCase()}
+                </span>
               </div>
-              <label className="absolute bottom-0 right-0 bg-[#8b4513] p-1 rounded-full cursor-pointer hover:bg-[#6b3410]">
+              <label className={`absolute bottom-0 right-0 p-1 rounded-full cursor-pointer transition-colors ${
+                uploadingImage ? 'bg-gray-400' : 'bg-[#8b4513] hover:bg-[#6b3410]'
+              }`}>
                 <Camera size={16} className="text-white" />
-                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleImageUpload} 
+                  disabled={uploadingImage}
+                  className="hidden" 
+                />
               </label>
+              {uploadingImage && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+                  <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
             </div>
             
             <div className="flex-1">
