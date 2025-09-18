@@ -2,6 +2,7 @@ import Order from '../models/OrderSchema.js';
 import Buyer from '../models/BuyerSchema.js';
 import Seller from '../models/SellerSchema.js';
 import Product from '../models/ProductSchema.js';
+import Cart from '../models/CartSchema.js';
 
 
 export const placeOrder = async (req, res) => {
@@ -11,6 +12,12 @@ export const placeOrder = async (req, res) => {
 
         if (!products || products.length === 0 || !shippingAddress) {
             return res.status(400).json({ success: false, message: "Products and shipping address are required." });
+        }
+
+        // Validate shipping address structure
+        const { address, city, state, zipCode } = shippingAddress;
+        if (!address || !city || !state || !zipCode) {
+            return res.status(400).json({ success: false, message: "Complete shipping address with address, city, state, and zipCode is required." });
         }
 
         let totalAmount = 0;
@@ -50,6 +57,9 @@ export const placeOrder = async (req, res) => {
             await buyer.save();
         }
 
+        // Clear the cart after successful order placement (optional)
+        await Cart.deleteOne({ buyer: buyerId });
+
         res.status(201).json({ success: true, message: "Order placed successfully", data: newOrder });
 
     } catch (error) {
@@ -88,6 +98,37 @@ export const getSellerSales = async (req, res) => {
     }
 };
 
+export const getOrderById = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+
+        const order = await Order.findById(orderId)
+            .populate('products.product')
+            .populate('buyer', 'name email');
+
+        if (!order) {
+            return res.status(404).json({ success: false, message: "Order not found." });
+        }
+
+        // Check authorization based on user role
+        if (userRole === 'buyer' && order.buyer._id.toString() !== userId) {
+            return res.status(403).json({ success: false, message: "Access denied. This is not your order." });
+        } else if (userRole === 'seller') {
+            const hasSellerProducts = order.products.some(item => item.seller.toString() === userId);
+            if (!hasSellerProducts) {
+                return res.status(403).json({ success: false, message: "Access denied. You don't have any products in this order." });
+            }
+        }
+
+        res.status(200).json({ success: true, message: "Order fetched successfully", data: order });
+    } catch (error) {
+        console.error("Error fetching order:", error.message);
+        res.status(500).json({ success: false, message: "Server error fetching order." });
+    }
+};
+
 export const updateOrderStatus = async (req, res) => {
     try {
         const { orderId } = req.params;
@@ -98,9 +139,10 @@ export const updateOrderStatus = async (req, res) => {
             return res.status(404).json({ success: false, message: "Order not found." });
         }
 
-        const isSellerAuthorized = order.products.every(item => item.seller.toString() === req.user.id);
-        if (!isSellerAuthorized) {
-            return res.status(403).json({ success: false, message: "Access denied. Not the seller of these products." });
+        // Check if the seller has at least one product in this order
+        const hasSellerProducts = order.products.some(item => item.seller.toString() === req.user.id);
+        if (!hasSellerProducts) {
+            return res.status(403).json({ success: false, message: "Access denied. You don't have any products in this order." });
         }
 
         if (!['shipped', 'delivered', 'canceled', 'returned'].includes(newStatus)) {
